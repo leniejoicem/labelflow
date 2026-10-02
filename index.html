@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LabelFlow</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235b34c4'/%3E%3Cpath d='M5 12V6a1 1 0 011-1h6l7 7-7 7-7-7z' fill='none' stroke='white' stroke-width='1.8' stroke-linejoin='round'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.2' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f8f6f1; --panel: #ffffff; --ink: #26222c; --muted: #77717c; --line: #e3ded4; --soft: #f4f1ea;
+    --accent: #5b34c4; --accent-hover: #4a28a6; --accent-ink: #ffffff; --accent-tint: #f2eefb;
+    --warn: #9a5a00; --warn-bg: #fdf3df; --bad: #b3261e; --bad-bg: #fbeceb; --ok: #2e6b46;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13.5px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  .hidden { display: none !important; }
+
+  header { display: flex; align-items: center; gap: 14px; padding: 0 20px; height: 48px; background: var(--accent); color: #fff; position: sticky; top: 0; z-index: 5; }
+  @font-face { font-family: "Plus Jakarta Sans"; font-weight: 700; font-display: swap; src: url("vendor/plus-jakarta-sans-700.woff2") format("woff2"); }
+  header h1 { margin: 0; font: 700 18px/1 "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+  header h1 svg { width: 20px; height: 20px; transform: rotate(-8deg); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .card-head h2 { margin: 0; }
+  .card-head button { padding: 3px 9px; font-size: 12.5px; }
+  header .spacer { flex: 1; }
+  #status { font-size: 12.5px; color: #efeaff; max-width: 60%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #status.warn { color: #ffe1a8; white-space: normal; }
+
+  button, .btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 6px 11px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+  button:hover, .btn:hover { border-color: #c9c2b5; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.link { border: 0; background: none; padding: 2px 4px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: #cfc8bb; }
+  button.link:hover { color: var(--ink); }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; padding: 18px 20px; align-items: start; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } aside { position: static !important; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+  .card h2 { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  .loadbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .loadbar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+
+  .empty { background: var(--panel); border: 1px dashed #cfc8bb; border-radius: 6px; padding: 32px 28px; }
+  .dropping .empty { border-color: var(--accent); background: var(--accent-tint); }
+  .empty h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .empty p { margin: 0 0 16px; color: var(--muted); max-width: 560px; }
+  .empty ul { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .empty li { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .empty li div { flex: 1; }
+  .empty li b { display: block; font-weight: 600; }
+  .empty li span { color: var(--muted); font-size: 12.5px; }
+
+  .tablecard { padding: 0; overflow: hidden; }
+  .toolbar { display: flex; gap: 8px; padding: 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+  .toolbar input[type=search] { flex: 1; min-width: 180px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; font: inherit; }
+  .toolbar select { padding: 6px 7px; border: 1px solid var(--line); border-radius: 5px; font: inherit; background: var(--panel); }
+  .toolbar input:focus, .toolbar select:focus { outline: none; border-color: var(--accent); }
+  .scroll { max-height: calc(100vh - 210px); overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { position: sticky; top: 0; background: var(--soft); z-index: 1; text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+  td { padding: 1px 4px; border-bottom: 1px solid #efebe3; vertical-align: middle; }
+  tr.alt td { background: #fbfaf7; }
+  tr.queued td { background: var(--accent-tint); }
+  tr.active td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .pr, #selAll { width: 11px; height: 11px; accent-color: var(--accent); cursor: pointer; vertical-align: middle; margin: 0; }
+  th.printh label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .cell { width: 100%; border: 1px solid transparent; background: transparent; padding: 5px 6px; border-radius: 4px; font: inherit; color: var(--ink); min-width: 0; }
+  .cell:hover { border-color: var(--line); background: var(--panel); }
+  .cell:focus { outline: none; border-color: var(--accent); background: var(--panel); }
+  .up { text-transform: uppercase; }
+  .cell.warn { background: var(--warn-bg); border-color: #ecd3a2; }
+  .cell.bad { background: var(--bad-bg); border-color: #ecbcb8; color: var(--bad); }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+  .bc { display: flex; align-items: center; gap: 4px; min-width: 170px; }
+  .bc img { height: 24px; width: 64px; object-fit: contain; background: #fff; border: 1px solid var(--line); border-radius: 3px; }
+  .bc .gs1 { font-size: 11px; color: var(--muted); }
+  .icon { border: 0; background: none; padding: 4px; color: #a39d94; border-radius: 4px; line-height: 0; }
+  .icon:hover { color: var(--ink); background: var(--soft); }
+  svg.i { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .acts { display: flex; justify-content: flex-end; }
+  col.c-sel { width: 44px; } col.c-color { width: 110px; } col.c-size { width: 70px; } col.c-sku { width: 160px; } col.c-bc { width: 200px; } col.c-x { width: 60px; }
+  .tip { font-size: 12px; color: var(--muted); padding: 7px 10px; border-top: 1px solid var(--line); }
+
+  aside { position: sticky; top: 66px; display: flex; flex-direction: column; gap: 12px; }
+  .label-preview { background: var(--soft); border-radius: 4px; padding: 16px; }
+  .label-preview svg { display: block; width: 100%; height: auto; }
+  .caption { font-size: 12.5px; margin-top: 8px; }
+  .big { font-size: 20px; font-weight: 600; }
+  .summary { font-size: 12.5px; color: var(--muted); max-height: 160px; overflow: auto; margin: 8px 0; }
+  .summary div { padding: 2px 0; border-bottom: 1px dotted #e7e2d9; }
+  .summary .warnline { color: var(--warn); }
+  .radio { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; font-size: 12.5px; }
+  .radio input { accent-color: var(--accent); }
+  .actions { display: flex; gap: 6px; }
+  .actions button { flex: 1; }
+
+  .viewer { position: fixed; inset: 0; background: rgba(28,24,36,.6); z-index: 20; display: flex; padding: 2.5vh 2.5vw; }
+  .viewer-box { flex: 1; background: var(--panel); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
+  .viewer-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .viewer-bar h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .viewer-bar .spacer { flex: 1; }
+  .viewer iframe { flex: 1; width: 100%; border: 0; background: #525659; }
+</style>
+</head>
+<body>
+<header>
+  <h1><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4a1 1 0 011-1h8l9 9-9 9-9-9z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>LabelFlow</h1>
+  <span class="spacer"></span>
+  <span id="status"></span>
+</header>
+
+<main>
+  <section>
+    <div class="loadbar">
+      <label class="btn" for="csvFile">Load CSV</label>
+      <label class="btn" for="imgFiles">Add barcode images</label>
+      <button id="addRow">Add row</button>
+      <span class="sep"></span>
+      <button id="tplBtn" class="link">Get the CSV template</button>
+      <input type="file" id="csvFile" accept=".csv,text/csv" class="hidden">
+      <input type="file" id="imgFiles" accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp" multiple class="hidden">
+      <input type="file" id="rowImg" accept="image/png,image/jpeg,image/svg+xml,image/gif,image/webp" class="hidden">
+    </div>
+
+    <div class="empty" id="empty">
+      <h3>No products loaded</h3>
+      <p>Drag a CSV or barcode images anywhere on this page, or pick one of these.</p>
+      <ul>
+        <li><div><b>Shopify export</b><span>The products CSV with UPC codes. Each variant gets a row.</span></div><label class="btn" for="csvFile">Load CSV</label></li>
+        <li><div><b>CSV template</b><span>Title, SKU, Color, Size, UPC. Fill it in Sheets or Excel, then load it. Rows come in ticked.</span></div><button data-tpl>Download</button></li>
+        <li><div><b>By hand</b><span>Type the details and the UPC, or attach the GS1 image.</span></div><button data-add>Add row</button></li>
+      </ul>
+    </div>
+
+    <div class="card tablecard hidden" id="tableCard">
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Search">
+        <select id="filter" aria-label="Show">
+          <option value="all">All rows</option>
+          <option value="queued">Ticked</option>
+          <option value="attention">Needs a look</option>
+          <option value="dupes">Same UPC or SKU</option>
+        </select>
+        <button id="removeAll" class="link">Clear list</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <colgroup><col class="c-sel"><col><col class="c-color"><col class="c-size"><col class="c-sku"><col class="c-bc"><col class="c-x"></colgroup>
+          <thead><tr>
+            <th class="printh"><label title="Tick every row shown"><input type="checkbox" id="selAll" aria-label="Print all rows shown"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg></label></th>
+            <th>Product</th><th>Color</th><th>Size</th><th>SKU</th><th>Barcode</th><th></th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="tip">A ticked row prints one sheet of 36. To tick a whole product, search for it and tick the box in the header.</div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card hidden" id="lpCard">
+      <div class="card-head"><h2>Sticker</h2><button id="savePng" title="Save this sticker as a PNG">Save PNG</button></div>
+      <div class="label-preview" id="lp"></div>
+      <div class="caption" id="lpName"></div>
+    </div>
+    <div class="card">
+      <h2>To print</h2>
+      <div class="big" id="total">0 sheets</div>
+      <div class="hint" id="totalSub">Nothing ticked yet.</div>
+      <div class="summary" id="summary"></div>
+      <div class="radio" id="formatBox">
+        <label><input type="radio" name="format" value="sheet" checked> Sheets of 36 (PDF)</label>
+        <label><input type="radio" name="format" value="png"> 1 sticker each (PNG)</label>
+      </div>
+      <div class="radio" id="modeBox">
+        <label><input type="radio" name="mode" value="zip" checked> Separate PDFs in a ZIP</label>
+        <label><input type="radio" name="mode" value="one"> One PDF</label>
+      </div>
+      <div class="actions">
+        <button id="preview" disabled>Preview</button>
+        <button id="download" class="primary" disabled>Download</button>
+      </div>
+      <p class="hint" style="margin:10px 0 0">Print at 100% scale.</p>
+    </div>
+  </aside>
+</main>
+
+<div class="viewer hidden" id="viewer" role="dialog" aria-modal="true" aria-labelledby="viewerTitle">
+  <div class="viewer-box">
+    <div class="viewer-bar">
+      <h3 id="viewerTitle">Preview</h3>
+      <span class="hint" id="viewerSub"></span>
+      <span class="spacer"></span>
+      <button id="viewerDownload" class="primary">Download</button>
+      <button id="viewerClose" aria-label="Close preview">Close</button>
+    </div>
+    <iframe id="frame" title="PDF preview"></iframe>
+  </div>
+</div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/fonts.js"></script>
+<script src="labelflow.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
